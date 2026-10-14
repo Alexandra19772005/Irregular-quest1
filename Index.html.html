@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Irregular Quest</title>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--ink:#172033;--muted:#68738a;--blue:#4d73ff;--green:#20a66a;--red:#e34f5f;--gold:#f3ad2b}
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink)}
+.app{max-width:720px;margin:auto;padding:18px 16px 40px}.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+h1{font-size:25px;margin:4px 0}.pill{background:#e8edff;color:#3555ca;padding:7px 11px;border-radius:99px;font-weight:700;font-size:13px}
+.progress{height:12px;background:#dfe5f0;border-radius:20px;overflow:hidden;margin:15px 0 6px}.bar{height:100%;background:var(--blue);width:0;transition:.3s}
+.meta{display:flex;justify-content:space-between;color:var(--muted);font-size:13px}
+.card{background:var(--card);border-radius:22px;padding:22px;margin-top:18px;box-shadow:0 10px 35px #24304a14}
+.mode{font-size:13px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.06em}
+.prompt{font-size:27px;font-weight:800;text-align:center;margin:25px 0 20px;min-height:68px;display:flex;align-items:center;justify-content:center}
+.sub{text-align:center;color:var(--muted);margin-top:-10px;margin-bottom:18px}
+.options{display:grid;gap:10px}.opt,button{font:inherit;border:0;border-radius:14px;padding:14px 16px;font-weight:750;cursor:pointer}
+.opt{background:#eef2f8;color:var(--ink);text-align:left}.opt:hover{background:#e4eaff}
+input{width:100%;padding:15px;border:2px solid #dce3ef;border-radius:14px;font-size:18px;outline:none}input:focus{border-color:var(--blue)}
+.primary{background:var(--blue);color:#fff;width:100%;margin-top:12px}.secondary{background:#edf1f7;color:var(--ink)}
+.feedback{margin-top:15px;padding:13px;border-radius:14px;font-weight:650;display:none}.good{display:block;background:#e8f8f0;color:#147348}.bad{display:block;background:#fff0f1;color:#ad3040}
+.answer{font-weight:850}.row{display:flex;gap:10px;margin-top:12px}.row button{flex:1}
+.homegrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.tile{background:white;border-radius:18px;padding:18px;box-shadow:0 7px 25px #24304a10}.tile b{display:block;font-size:18px;margin-bottom:5px}.tile span{font-size:13px;color:var(--muted)}
+.stats{margin-top:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.stat{background:#fff;border-radius:14px;padding:13px;text-align:center}.stat b{font-size:20px;display:block}.stat span{font-size:11px;color:var(--muted)}
+.small{font-size:12px;color:var(--muted);line-height:1.4}.hidden{display:none!important}
+.star{color:var(--gold)} .footer{text-align:center;color:var(--muted);font-size:12px;margin-top:20px}
+@media(max-width:480px){.homegrid{grid-template-columns:1fr}.prompt{font-size:24px}.card{padding:18px}}
+</style></head>
+<body><div class="app">
+<div class="top"><h1>🇬🇧 Irregular Quest</h1><div class="pill" id="streak">🔥 0</div></div>
+<div class="progress"><div class="bar" id="bar"></div></div><div class="meta"><span id="progressText"></span><span id="levelText"></span></div>
+
+<div id="home">
+<div class="card"><div class="mode">Mission</div><h2>Conquiers les 60 verbes !</h2>
+<p>Chaque verbe doit franchir 4 étapes : reconnaître, compléter, écrire, puis maîtriser dans tous les sens. Les erreurs reviennent plus souvent.</p>
+<div class="homegrid">
+<button class="tile" onclick="start('learn')"><b>🚀 Entraînement</b><span>10 questions adaptées à ton niveau</span></button>
+<button class="tile" onclick="start('control')"><b>🏆 Contrôle</b><span>20 questions, sans correction immédiate</span></button>
+<button class="tile" onclick="resetProgress()"><b>↻ Recommencer</b><span>Effacer la progression sur cet appareil</span></button>
+<button class="tile" onclick="showList()"><b>📚 Mes verbes</b><span>Voir les 60 verbes et leurs étoiles</span></button>
+</div>
+<div class="stats"><div class="stat"><b id="mastered">0</b><span>maîtrisés</span></div><div class="stat"><b id="attempts">0</b><span>réponses</span></div><div class="stat"><b id="accuracy">—</b><span>réussite</span></div></div>
+</div></div>
+
+<div id="quiz" class="hidden"><div class="card">
+<div class="mode" id="modeLabel"></div><div class="prompt" id="prompt"></div><div class="sub" id="sub"></div>
+<div id="options" class="options"></div><div id="typing" class="hidden"><input id="answerInput" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Écris ta réponse…"><button class="primary" onclick="submitTyped()">Valider</button></div>
+<div id="feedback" class="feedback"></div><button id="next" class="primary hidden" onclick="nextQuestion()">Question suivante →</button>
+</div><div class="row"><button class="secondary" onclick="goHome()">← Accueil</button></div></div>
+
+<div id="list" class="hidden"><div class="card"><div class="mode">Mes 60 verbes</div><div id="verbList"></div></div><button class="secondary" style="width:100%;margin-top:12px" onclick="goHome()">← Accueil</button></div>
+<div class="footer">Progression enregistrée uniquement sur cet appareil.</div>
+</div>
+<script>
+const verbs = [{"inf": "be", "past": "was/were", "pp": "been", "fr": "être"}, {"inf": "beat", "past": "beat", "pp": "beaten", "fr": "battre"}, {"inf": "become", "past": "became", "pp": "become", "fr": "devenir"}, {"inf": "begin", "past": "began", "pp": "begun", "fr": "commencer"}, {"inf": "bite", "past": "bit", "pp": "bitten", "fr": "mordre"}, {"inf": "blow", "past": "blew", "pp": "blown", "fr": "souffler"}, {"inf": "break", "past": "broke", "pp": "broken", "fr": "casser"}, {"inf": "bring", "past": "brought", "pp": "brought", "fr": "apporter"}, {"inf": "build", "past": "built", "pp": "built", "fr": "construire"}, {"inf": "buy", "past": "bought", "pp": "bought", "fr": "acheter"}, {"inf": "catch", "past": "caught", "pp": "caught", "fr": "attraper"}, {"inf": "choose", "past": "chose", "pp": "chosen", "fr": "choisir"}, {"inf": "come", "past": "came", "pp": "come", "fr": "venir"}, {"inf": "cost", "past": "cost", "pp": "cost", "fr": "coûter"}, {"inf": "cut", "past": "cut", "pp": "cut", "fr": "couper"}, {"inf": "do", "past": "did", "pp": "done", "fr": "faire"}, {"inf": "dream", "past": "dreamt", "pp": "dreamt", "fr": "rêver"}, {"inf": "drink", "past": "drank", "pp": "drunk", "fr": "boire"}, {"inf": "drive", "past": "drove", "pp": "driven", "fr": "conduire"}, {"inf": "eat", "past": "ate", "pp": "eaten", "fr": "manger"}, {"inf": "fall", "past": "fell", "pp": "fallen", "fr": "tomber"}, {"inf": "feel", "past": "felt", "pp": "felt", "fr": "se sentir, toucher"}, {"inf": "fight", "past": "fought", "pp": "fought", "fr": "se battre"}, {"inf": "find", "past": "found", "pp": "found", "fr": "trouver"}, {"inf": "fly", "past": "flew", "pp": "flown", "fr": "voler"}, {"inf": "forget", "past": "forgot", "pp": "forgotten", "fr": "oublier"}, {"inf": "get", "past": "got", "pp": "got", "fr": "obtenir"}, {"inf": "give", "past": "gave", "pp": "given", "fr": "donner"}, {"inf": "go", "past": "went", "pp": "gone", "fr": "aller"}, {"inf": "have", "past": "had", "pp": "had", "fr": "avoir"}, {"inf": "hear", "past": "heard", "pp": "heard", "fr": "entendre"}, {"inf": "hide", "past": "hid", "pp": "hidden", "fr": "cacher"}, {"inf": "hit", "past": "hit", "pp": "hit", "fr": "frapper"}, {"inf": "hurt", "past": "hurt", "pp": "hurt", "fr": "blesser"}, {"inf": "keep", "past": "kept", "pp": "kept", "fr": "garder"}, {"inf": "know", "past": "knew", "pp": "known", "fr": "connaître, savoir"}, {"inf": "leave", "past": "left", "pp": "left", "fr": "quitter, partir"}, {"inf": "make", "past": "made", "pp": "made", "fr": "faire, fabriquer"}, {"inf": "meet", "past": "met", "pp": "met", "fr": "rencontrer"}, {"inf": "pay", "past": "paid", "pp": "paid", "fr": "payer"}, {"inf": "put", "past": "put", "pp": "put", "fr": "mettre"}, {"inf": "read", "past": "read", "pp": "read", "fr": "lire"}, {"inf": "run", "past": "ran", "pp": "run", "fr": "courir"}, {"inf": "say", "past": "said", "pp": "said", "fr": "dire"}, {"inf": "see", "past": "saw", "pp": "seen", "fr": "voir"}, {"inf": "send", "past": "sent", "pp": "sent", "fr": "envoyer"}, {"inf": "shut", "past": "shut", "pp": "shut", "fr": "fermer"}, {"inf": "sing", "past": "sang", "pp": "sung", "fr": "chanter"}, {"inf": "sit", "past": "sat", "pp": "sat", "fr": "être assis"}, {"inf": "sleep", "past": "slept", "pp": "slept", "fr": "dormir"}, {"inf": "smell", "past": "smelt", "pp": "smelt", "fr": "sentir"}, {"inf": "speak", "past": "spoke", "pp": "spoken", "fr": "parler"}, {"inf": "spend", "past": "spent", "pp": "spent", "fr": "passer, dépenser"}, {"inf": "take", "past": "took", "pp": "taken", "fr": "prendre"}, {"inf": "tell", "past": "told", "pp": "told", "fr": "dire, raconter"}, {"inf": "think", "past": "thought", "pp": "thought", "fr": "penser"}, {"inf": "understand", "past": "understood", "pp": "understood", "fr": "comprendre"}, {"inf": "wake", "past": "woke", "pp": "woken", "fr": "réveiller"}, {"inf": "win", "past": "won", "pp": "won", "fr": "gagner"}, {"inf": "write", "past": "wrote", "pp": "written", "fr": "écrire"}];
+let state=JSON.parse(localStorage.getItem('irq-state')||'null')||{v:{},attempts:0,correct:0,streak:0};
+verbs.forEach(x=>{if(!state.v[x.inf])state.v[x.inf]={stage:0,wins:0,miss:0}});
+let session=[], qi=0, current=null, control=false, controlScore=0, answered=false;
+const $=id=>document.getElementById(id); const norm=s=>s.toLowerCase().trim().replace(/\s+/g,' ');
+function save(){localStorage.setItem('irq-state',JSON.stringify(state)); renderHeader()}
+function mastered(){return verbs.filter(v=>state.v[v.inf].stage>=4).length}
+function renderHeader(){$('streak').textContent='🔥 '+state.streak;$('bar').style.width=(mastered()/verbs.length*100)+'%';$('progressText').textContent=mastered()+' / '+verbs.length+' maîtrisés';$('levelText').textContent='★'.repeat(Math.min(4,Math.floor(Object.values(state.v).reduce((a,b)=>a+b.stage,0)/60)))}
+function homeStats(){$('mastered').textContent=mastered();$('attempts').textContent=state.attempts;$('accuracy').textContent=state.attempts?Math.round(state.correct/state.attempts*100)+'%':'—'}
+function goHome(){$('home').classList.remove('hidden');$('quiz').classList.add('hidden');$('list').classList.add('hidden');renderHeader();homeStats()}
+function resetProgress(){if(confirm('Effacer toute la progression ?')){localStorage.removeItem('irq-state');location.reload()}}
+function weightedPick(){
+ let bag=[]; verbs.forEach(v=>{let s=state.v[v.inf];let w=1+(4-s.stage)*2+s.miss*3;for(let i=0;i<w;i++)bag.push(v)});
+ return bag[Math.floor(Math.random()*bag.length)]
+}
+function start(type){control=type==='control';controlScore=0;qi=0;session=[];let n=control?20:10;for(let i=0;i<n;i++)session.push(weightedPick());$('home').classList.add('hidden');$('list').classList.add('hidden');$('quiz').classList.remove('hidden');renderQuestion()}
+function qFor(v){
+ let st=control?3:state.v[v.inf].stage;
+ if(st===0){let fields=['inf','past','pp'];let f=fields[Math.floor(Math.random()*3)];let labels={inf:'infinitif',past:'prétérit',pp:'participe passé'};return {type:'mc',prompt:'« '+v.fr+' » : quel est le '+labels[f]+' ?',ans:v[f],field:f}}
+ if(st===1){let fields=['past','pp'];let f=fields[Math.floor(Math.random()*2)];return {type:'mc',prompt:v.inf+' → '+(f==='past'?'? → '+v.pp:v.past+' → ?'),ans:v[f],field:f}}
+ if(st===2){let fields=['past','pp'];let f=fields[Math.floor(Math.random()*2)];return {type:'type',prompt:v.inf+' → '+(f==='past'?'? → '+v.pp:v.past+' → ?'),ans:v[f],field:f}}
+ let types=[
+ {prompt:'« '+v.fr+' » → écris infinitif, prétérit, participe',ans:v.inf+'; '+v.past+'; '+v.pp, multi:[v.inf,v.past,v.pp]},
+ {prompt:'Infinitif : '+v.inf+' → prétérit + participe',ans:v.past+'; '+v.pp,multi:[v.past,v.pp]},
+ {prompt:'Prétérit : '+v.past+' → infinitif + participe',ans:v.inf+'; '+v.pp,multi:[v.inf,v.pp]},
+ {prompt:'Participe : '+v.pp+' → infinitif + prétérit',ans:v.inf+'; '+v.past,multi:[v.inf,v.past]}
+ ]; let t=types[Math.floor(Math.random()*types.length)];return {...t,type:'type',field:'multi'}
+}
+function renderQuestion(){
+ answered=false;if(qi>=session.length)return finish(); current={v:session[qi]};current.q=qFor(current.v);
+ $('modeLabel').textContent=(control?'Contrôle':'Entraînement')+' • '+(qi+1)+'/'+session.length;
+ $('prompt').textContent=current.q.prompt;$('sub').textContent=control?'Pas d’aide pendant le contrôle.':'Niveau '+(Math.min(4,state.v[current.v.inf].stage+1))+'/4';
+ $('feedback').className='feedback';$('feedback').style.display='none';$('next').classList.add('hidden');$('options').innerHTML='';$('typing').classList.add('hidden');
+ if(current.q.type==='mc'){let opts=[current.q.ans];while(opts.length<3){let z=verbs[Math.floor(Math.random()*verbs.length)][current.q.field];if(!opts.includes(z))opts.push(z)}opts.sort(()=>Math.random()-.5);opts.forEach(o=>{let b=document.createElement('button');b.className='opt';b.textContent=o;b.onclick=()=>judge(o);$('options').appendChild(b)})}
+ else{$('typing').classList.remove('hidden');$('answerInput').value='';$('answerInput').placeholder=current.q.multi?'Sépare les réponses par des virgules':'Écris ta réponse…';setTimeout(()=>$('answerInput').focus(),100)}
+}
+function submitTyped(){judge($('answerInput').value)}
+function isCorrect(raw){
+ if(current.q.multi){let got=raw.toLowerCase().split(/[,;\/]+/).map(norm);return got.length===current.q.multi.length&&got.every((x,i)=>x===norm(current.q.multi[i]))}
+ let a=norm(raw), target=norm(current.q.ans); if(target==='was/were')return ['was/were','was were','was, were'].includes(a);return a===target
+}
+function judge(raw){
+ if(answered)return;answered=true;let ok=isCorrect(raw), s=state.v[current.v.inf];
+ if(control){if(ok)controlScore++}else{state.attempts++; if(ok){state.correct++;state.streak++;s.wins++; if(s.wins>=1&&s.stage<4){s.stage++;s.wins=0}}else{state.streak=0;s.miss++;s.wins=0;if(s.stage>0)s.stage=Math.max(0,s.stage-1); if(qi+3<session.length)session.splice(Math.min(session.length,qi+3),0,current.v)}save()}
+ if(!control){$('feedback').style.display='block';$('feedback').className='feedback '+(ok?'good':'bad');$('feedback').innerHTML=ok?'✓ Bravo ! <span class="answer">'+current.q.ans+'</span>':'✗ Réponse : <span class="answer">'+current.q.ans+'</span><br><span class="small">'+current.v.inf+' – '+current.v.past+' – '+current.v.pp+' – '+current.v.fr+'</span>'}
+ $('next').classList.remove('hidden');$('next').textContent=(qi===session.length-1?'Voir le résultat →':'Question suivante →')
+}
+function nextQuestion(){qi++;renderQuestion()}
+function finish(){
+ $('prompt').textContent=control?'Résultat : '+controlScore+' / '+session.length:'Séance terminée 🎉';
+ $('sub').textContent=control?(controlScore>=16?'Très bon niveau !':'Continue l’entraînement pour consolider.'):'Les erreurs reviendront plus souvent à la prochaine séance.';
+ $('options').innerHTML='';$('typing').classList.add('hidden');$('feedback').style.display='none';$('next').classList.add('hidden');
+}
+function showList(){
+ $('home').classList.add('hidden');$('quiz').classList.add('hidden');$('list').classList.remove('hidden');
+ $('verbList').innerHTML=verbs.map(v=>{let s=state.v[v.inf];return '<div style="padding:11px 0;border-bottom:1px solid #edf0f5"><b>'+v.inf+' – '+v.past+' – '+v.pp+'</b><br><span class="small">'+v.fr+'</span><span style="float:right" class="star">'+'★'.repeat(s.stage)+'☆'.repeat(4-s.stage)+'</span></div>'}).join('')
+}
+$('answerInput').addEventListener('keydown',e=>{if(e.key==='Enter')submitTyped()});renderHeader();homeStats();
+</script></body></html>
